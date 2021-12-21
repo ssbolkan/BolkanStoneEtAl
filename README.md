@@ -62,7 +62,7 @@ STEP-BY-STEP									 								\
 			with associated GLM-HMM stateIdx and stateProb)										\
 		(ii)  OffOn_TasksOrGroup_all.mat (DMS D1R,D2R,NoOpsin and NAc D1R,D2R,NoOpsin 							\
 			concatentated behavioral logs in mice performing the evidence 								\
-			accumulation (_aoe), no distrators (_nd) or permanent cues (_pc) tasks) 							\
+			accumulation (_aoe), no distrators (_nd) or permanent cues (_pc) tasks) 						\
 		(iii) rtPPdata.mat (real-time conditioned place preference, Ethovision output 							\
 			measures, DMS D1R,D2R,NoOpsin laser) 											\
 		(iv)  runningWheelSpikes.mat (summary of 110 single-units in DMS from D1R-Cre/A2a-Cre 						\
@@ -72,7 +72,7 @@ STEP-BY-STEP									 								\
 			navigating a virtual corridor)      									         	\
 		(vii) 4 .xls docs summarizing stereological quantification of D1R/D2R in situ 							\
 			hybridization expression in A2a/D2R/D1R-Cre mouse lines							          	\	
-(3) in MATLAB open/edit .m file <yr local path>/BolkanStoneEtAl/Code/utility/globalParams.m                                                            		\
+(3) in MATLAB open/edit .m file <yr local path>/BolkanStoneEtAl/Code/utility/globalParams.m                                                    	\
 	(a) change globalParams.dataPath to match location of downloaded data                                                         		\
 (4) run e.g. figure1_script in matlab command line                                                                                    		\
 	(a) will generate all figure1 data plots and save in your matlab workspace the 								\
