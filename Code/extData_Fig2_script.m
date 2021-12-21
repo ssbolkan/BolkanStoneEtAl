@@ -6,7 +6,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear all
 
-plotWhat    = 'd1_cre'; 
+prompt   = 'Enter one of following: d1_cre or a2a_cre or d2_cre or d1_d2overlap or d2_d1overlap   ';
+plotWhat = input(prompt,'s');
+
+% plotWhat    = 'd1_cre'; 
 % change this line to following opts to obtain:
 % ExtData 2C - d1_cre
 % ExtData 2F - a2a_cre

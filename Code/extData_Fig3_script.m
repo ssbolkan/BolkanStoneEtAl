@@ -16,7 +16,7 @@
 % NOTE: mexPlex only necessary if loading .plx data, which is not the case
 % if using spikeTS, laserTS, and unit waveforms saved in spikeDataAll.mat
 
-cd(groupParams.dataPath)
+cd(globalParams.dataPath)
 load('runningWheelSpikes.mat')
 clearvars -except spikeDataAll
 %% plots PSTH and raster for example units in panel ExtData 1C and 1F
