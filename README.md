@@ -17,36 +17,37 @@
  (4)  ExtData Fig1  - inhibition validation (silicon optrode recording in A2a-Cre/D1R-Cre mice 							\
  			expressing NpHR while ambulating on a running wheel)  									\
 			(related to Figure 1a-c, ExtData Fig3)											\
- (5)  ExtData Fig2  - stereological quantification of striatal D1R/D2R fluoroescent in situ hybridization data					\
- 			(related to Figure 1a-c, Figure 2, ExtData Fig1, and ExtData Fig3)							\
- (6)  ExtData Fig3  - raster plots of all significantly laser inhibited single-units in A2a- or D1R-cre mice					\
- 			(related to Figure 1a-c, ExtData Fig1)											\
- (7)  ExtData Fig4  - additional summary analysis of effects of DMS laser on motor variables during VR corridor					\
+ (5)  ExtData Fig2  - additional summary analysis of effects of DMS laser on motor variables during VR corridor					\
  			(related to Figure 1d-j)												\
- (8)  ExtData Fig5  - real-time conditioned place preference, NpHR in DMS of A2a-/D2R- or D1R-Cre mice or NoOpsin laser control			\
- (9)  ExtData Fig6  - additional summary analysis of effects VR decision-making tasks on motor variables					\
+ (6)  ExtData Fig3  - additional summary analysis of effects VR decision-making tasks on motor variables					\
   			(related to Figure 2)													\
- (10) ExtData Fig7  - indiv. & group psychometric performance during laser on/off trials across VR tasks and DMS/NAc laser groups		\
+ (7)  ExtData Fig4  - indiv. & group psychometric performance during laser on/off trials across VR tasks and DMS/NAc laser groups		\
    			(related to Figure 3)													\
- (11) ExtData Fig8  - additional comparisons laser-induced choice bias across VR tasks and DMS/NAc laser groups					\
+ (8)  ExtData Fig5  - additional comparisons laser-induced choice bias across VR tasks and DMS/NAc laser groups					\
     			(related to Figure 3)													\
- (12) ExtData Fig9  - additional summary analysis of effects of DMS laser on motor variables across VR decision-making tasks			\
+ (9)  ExtData Fig6  - additional summary analysis of effects of DMS laser on motor variables across VR decision-making tasks			\
   			(related to Figure 2 and Figure 3)											\
- (13) ExtData Fig12 - additional analysis task engagement indicators across GLM-HMM states							\
+ (10) ExtData Fig8  - additional analysis task engagement indicators across GLM-HMM states							\
  			(related to Figure 5-7)													\
- (14) ExtData Fig14 - additional summary analysis of motor variables across GLM-HMM states (laser off and laser on-off seperately)		\
+ (11) ExtData Fig10 - additional summary analysis of motor variables across GLM-HMM states (laser off and laser on-off seperately)		\
  			(related to Figure 5-7, ExtData Fig9)											\
- (15) ExtData Fig15 - summary of behavioral performance across VR decision-making task shaping							\
+ (12) Supp. Fig1    - stereological quantification of striatal D1R/D2R fluoroescent in situ hybridization data					\
+ 			(related to Figure 1a-c, Figure 2, ExtData Fig1, and ExtData Fig3)							\
+ (13) Supp. Fig2    - raster plots of all significantly laser inhibited single-units in A2a- or D1R-cre mice					\
+ 			(related to Figure 1a-c, ExtData Fig1)											\		
+ (14) Supp. Fig3    - real-time conditioned place preference, NpHR in DMS of A2a-/D2R- or D1R-Cre mice or NoOpsin laser control			\
+ (15) Supp. Fig5    - summary of behavioral performance across VR decision-making task shaping							\
+
  
  see https://github.com/irisstone/glmhmm for plots of:											 	\ 
  (1)  Figure 4      - Bernoulli GLM model, weights, and psychometric performance								\
  (2)  Figure 5      - comparison of GLM vs. GLM-HMM model performance										\
  (3)  Figure 6      - GLM-HMM weights, psychometrics, and descriptive state analyses								\
  (4)  Figure 7      - GLM-HMM state transition analyses												\
- (5)  ExtData Fig10 - GLM-HMM model validation analyses												\
- (6)  ExtData Fig11 - summary of within-session GLM-HMM state occupancy for all individual mice							\
- (7)  ExtData Fig13 - additional model validation and simulation analyses									\
- 
+ (5)  ExtData Fig7  - GLM-HMM model validation analyses												\
+ (6)  ExtData Fig9  - additional model validation and simulation analyses									\
+ (7)  Supp. Fig4    - summary of within-session GLM-HMM state occupancy for all individual mice							\
+
  
 STEP-BY-STEP									 								\
 (1) clone/download this repo and add to matlab path 												\
