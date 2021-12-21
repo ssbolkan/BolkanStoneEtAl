@@ -734,7 +734,7 @@ text(2.8, 545, [num2str(numel(dataArray{nTask})) ' mice' ])
 text(2.8, 535, [num2str(nTrialsTotal_xTask(nTask)) ' trials' ])
 set(gca,'xtick',1:3,'xticklabel',{'AoE';'ctrl#1';'ctrl#2'})
 rotateXLabels(gca,45)
-ylabel('distance (%)','fontsize',12)
+ylabel('distance (cm)','fontsize',12)
 xlim([.65 3.35])
 ylim([300 550])
 box off
