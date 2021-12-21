@@ -4,7 +4,7 @@
  --code to analyze data/generate plots in Bolkan, Stone et al (2022) 										\
  --download data from 10.6084/m9.figshare.17299142 or https://figshare.com/s/84695a0cd8cf37a446b9 						\
  --see https://github.com/irisstone/glmhmm for general use application of GLM-HMMs to similarly 						\
- structured decision-making behavioral data, as well as additional publication plots.								\
+ 	structured decision-making behavioral data, as well as additional publication plots.							\
  
  This repo analyzes data and makes plots for 													\
  (1)  Figure 1      - motor effects of DMS laser while mice navigate a virtual corridor 							\
@@ -53,9 +53,9 @@ STEP-BY-STEP									 								\
 (2) download data on figshare from link at top 													\
 	(a) zipped Data folder (12.8GB), after download and unzip (21.9GB),									\
 		***take stock of Data folder location*** 											\
-	(b) see <yr local path>/BolkanStoneEtAl/Code/utility/logExplanation.m for extensive							\
+	(b) see [yr local path]/BolkanStoneEtAl/Code/utility/logExplanation.m for extensive							\
 		explanation of content of behavior logs											 	\
-	(c) see <yr local path>/BolkanStoneEtAl/Code/utility/SpikeDataAll_Explanation.m for 							\
+	(c) see [yr local path]/BolkanStoneEtAl/Code/utility/SpikeDataAll_Explanation.m for 							\
 		extensive explanation of contents of spike data summary									 	\	
 	(d) Contents of Data folder: 														\
 		(i)   DMS_AoE_GLMHMM_states.mat (DMS D1R and D2R concatenated behavioral logs 							\
@@ -72,7 +72,7 @@ STEP-BY-STEP									 								\
 			navigating a virtual corridor)      									         	\
 		(vii) 4 .xls docs summarizing stereological quantification of D1R/D2R in situ 							\
 			hybridization expression in A2a/D2R/D1R-Cre mouse lines							          	\	
-(3) in MATLAB open/edit .m file <yr local path>/BolkanStoneEtAl/Code/utility/globalParams.m                                                    	\
+(3) in MATLAB open/edit .m file [yr local path]/BolkanStoneEtAl/Code/utility/globalParams.m                                                    	\
 	(a) change globalParams.dataPath to match location of downloaded data                                                         		\
 (4) run e.g. figure1_script in matlab command line                                                                                    		\
 	(a) will generate all figure1 data plots and save in your matlab workspace the 								\
