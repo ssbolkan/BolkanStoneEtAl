@@ -1,852 +1,434 @@
-%% Script to generate ExtData Fig 8 data plots
+%% Script to generate ExtData Fig 12A-I data plots
+% related to Fig 6 and 7
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% cross task comparison of delta bias with stats text
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% load DMS logs with state probability and most likely state indices 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear all
 cd(globalParams.dataPath)
-load('OffOn_TasksOrGroup_all.mat', 'lgDMSD2_aoe'  ,'lgDMSD2_nd'  ,'lgDMSD2_pc'  , ...
-                                   'lgDMSD1_aoe'  ,'lgDMSD1_nd'  ,'lgDMSD1_pc'  , ...
-                                   'lgDMSCtrl_aoe','lgDMSCtrl_nd','lgDMSCtrl_pc', ...
-                                   'lgNACD2_aoe'  ,'lgNACD1_aoe' );
+load('DMS_AoE_GLMHMM_states.mat')
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% analyzes log files for opto induced choice bias
-% (1) cue statistics of aoe (log.currMaze==10) and pc (log.currMaze==7) pre-selected to match
-% (2) all analyses subselect trial blocks with performance >60% and trials with excessTravel<0.1 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-groupOrder = {'DMSD2_aoe'  ,'DMSD2_nd'  ,'DMSD2_pc'  , ...
-              'DMSD1_aoe'  ,'DMSD1_nd'  ,'DMSD1_pc'  , ...
-              'DMSCtrl_aoe','DMSCtrl_nd','DMSCtrl_pc', ...
-              'NACD2_aoe'  ,'NACD1_aoe' };
+%% analysis of reward and rewardRate at all within-session transitions
+reward = []; rewardRate = [];
+groupOrder = {'DMSD1', 'DMSD2' };
 counter = 1;
 for groupNum = 1:numel(groupOrder)
-    clear lg lgClean 
-    lg          = eval(['lg' groupOrder{groupNum}]); 
-       
-    % remove field not of same length
-    if isfield(lg,'keyFrameLabels')
-        lg = rmfield(lg,'keyFrameLabels');
-    else
+    clear lg  
+    lg       = eval(['lg' groupOrder{groupNum}]); 
+    
+    % initialize and get reward delivered on trial, if choice was correct
+    rewardGiven = []; 
+    rewardGiven = .004*lg.rewardScale; % converted to mL. 4ul*rewardScale reflects actual size of reward per trial
+    accuracy    = []; 
+    accuracy    = lg.choice == lg.trialType; % if choice matches reward side
+    
+    % find all trial indices where most likely state changes
+    %  and then remove all indicies that are between session transitions
+    removeInd = []; transInd = [];
+    transInd = find(diff(lg.stateIndex)~=0);
+    for transID = 1:numel(transInd)
+        if lg.sessionID(transInd(transID)) ~= lg.sessionID(transInd(transID)+1) || ...
+                lg.sessionID(transInd(transID)) ~= lg.sessionID(transInd(transID)-1)
+            removeInd = [removeInd transID];
+        else
+        end
+    end
+    transInd(removeInd) = [];
+    
+    % initialize counters and vars to save for 6 possible transition types
+    s1TOs3_COUNTER = 0; s1TOs3_reward = []; s1TOs3_rewardRate = [];
+    s1TOs2_COUNTER = 0; s1TOs2_reward = []; s1TOs2_rewardRate = [];
+    s2TOs3_COUNTER = 0; s2TOs3_reward = []; s2TOs3_rewardRate = [];
+    s2TOs1_COUNTER = 0; s2TOs1_reward = []; s2TOs1_rewardRate = [];
+    s3TOs1_COUNTER = 0; s3TOs1_reward = []; s3TOs1_rewardRate = [];
+    s3TOs2_COUNTER = 0; s3TOs2_reward = []; s3TOs2_rewardRate = [];
+    
+    % loop through all within session transitions
+    for transID = 1:numel(transInd)
+        % if transition from state 1-->2
+        if lg.stateIndex(transInd(transID)) == 1 && lg.stateIndex(transInd(transID)+1) == 2
+            startInd = []; startInd = find(diff(lg.sessionID)~=0) ; % get index of all between sess transitions
+            startInd = startInd(startInd<transInd(transID)); % select all between sess transitions before current state transition
+            startInd = startInd(end) + 1; % the closest of these (+1 trial) is the first trial of session with current state transition
+            s1TOs2_COUNTER = s1TOs2_COUNTER+1;
+            toSumRewardTemp = []; toSumAccuracyTemp = []; toSumTrialDurTemp = [];
+            toSumRewardTemp    = rewardGiven(startInd:transInd(transID)); % scaled rewardGiven per trial up to transition (mL)
+            toSumAccuracyTemp  = accuracy(startInd:transInd(transID)); % whether trials up to transition was rewarded
+            toSumTrialDurTemp  = lg.trialDurFull(startInd:transInd(transID)); % per trial durations including ITI up to transition (in seconds)
+            s1TOs2_reward(s1TOs2_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1)); % total reward (mL) from sess start to transition
+            s1TOs2_rewardRate(s1TOs2_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1))/(sum(toSumTrialDurTemp)/60)*1000; % reward (uL) / sess duration (mL) up to transition
+            
+            % if transition from state 1-->3
+        elseif lg.stateIndex(transInd(transID)) == 1 && lg.stateIndex(transInd(transID)+1) == 3
+            startInd = []; startInd = find(diff(lg.sessionID)~=0) ; % get index of all between sess transitions
+            startInd = startInd(startInd<transInd(transID)); % select all between sess transitions before current state transition
+            startInd = startInd(end) + 1; % the closest of these (+1 trial) is the first trial of session with current state transition
+            s1TOs3_COUNTER = s1TOs3_COUNTER+1;
+            toSumRewardTemp = []; toSumAccuracyTemp = []; toSumTrialDurTemp = [];
+            toSumRewardTemp    = rewardGiven(startInd:transInd(transID)); % scaled rewardGiven per trial up to transition (mL)
+            toSumAccuracyTemp  = accuracy(startInd:transInd(transID)); % whether trials up to transition was rewarded
+            toSumTrialDurTemp  = lg.trialDurFull(startInd:transInd(transID)); % per trial durations including ITI up to transition (in seconds)
+            s1TOs3_reward(s1TOs3_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1)); % total reward (mL) from sess start to transition
+            s1TOs3_rewardRate(s1TOs3_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1))/(sum(toSumTrialDurTemp)/60)*1000; % reward (uL) / sess duration (mL) up to transition
+            
+            % if transition from state 2-->3
+        elseif lg.stateIndex(transInd(transID)) == 2 && lg.stateIndex(transInd(transID)+1) == 3
+            startInd = []; startInd = find(diff(lg.sessionID)~=0) ; % get index of all between sess transitions
+            startInd = startInd(startInd<transInd(transID)); % select all between sess transitions before current state transition
+            startInd = startInd(end) + 1; % the closest of these (+1 trial) is the first trial of session with current state transition
+            s2TOs3_COUNTER = s2TOs3_COUNTER+1;
+            toSumRewardTemp = []; toSumAccuracyTemp = []; toSumTrialDurTemp = [];
+            toSumRewardTemp    = rewardGiven(startInd:transInd(transID)); % scaled rewardGiven per trial up to transition (mL)
+            toSumAccuracyTemp  = accuracy(startInd:transInd(transID)); % whether trials up to transition was rewarded
+            toSumTrialDurTemp  = lg.trialDurFull(startInd:transInd(transID)); % per trial durations including ITI up to transition (in seconds)
+            s2TOs3_reward(s2TOs3_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1)); % total reward (mL) from sess start to transition
+            s2TOs3_rewardRate(s2TOs3_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1))/(sum(toSumTrialDurTemp)/60)*1000; % reward (uL) / sess duration (mL) up to transition
+            
+            % if transition from state 2-->1
+        elseif lg.stateIndex(transInd(transID)) == 2 && lg.stateIndex(transInd(transID)+1) == 1
+            startInd = []; startInd = find(diff(lg.sessionID)~=0) ; % get index of all between sess transitions
+            startInd = startInd(startInd<transInd(transID)); % select all between sess transitions before current state transition
+            startInd = startInd(end) + 1; % the closest of these (+1 trial) is the first trial of session with current state transition
+            s2TOs1_COUNTER = s2TOs1_COUNTER+1;
+            toSumRewardTemp    = rewardGiven(startInd:transInd(transID)); % scaled rewardGiven per trial up to transition (mL)
+            toSumAccuracyTemp  = accuracy(startInd:transInd(transID)); % whether trials up to transition was rewarded
+            toSumTrialDurTemp  = lg.trialDurFull(startInd:transInd(transID)); % per trial durations including ITI up to transition (in seconds)
+            s2TOs1_reward(s2TOs1_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1)); % total reward (mL) from sess start to transition
+            s2TOs1_rewardRate(s2TOs1_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1))/(sum(toSumTrialDurTemp)/60)*1000; % reward (uL) / sess duration (mL) up to transition
+            
+            % if transition from state 3-->1
+        elseif lg.stateIndex(transInd(transID)) == 3 && lg.stateIndex(transInd(transID)+1) == 1
+            startInd = []; startInd = find(diff(lg.sessionID)~=0) ; % get index of all between sess transitions
+            startInd = startInd(startInd<transInd(transID)); % select all between sess transitions before current state transition
+            startInd = startInd(end) + 1; % the closest of these (+1 trial) is the first trial of session with current state transition
+            s3TOs1_COUNTER = s3TOs1_COUNTER+1;
+            toSumRewardTemp = []; toSumAccuracyTemp = []; toSumTrialDurTemp = [];
+            toSumRewardTemp    = rewardGiven(startInd:transInd(transID)); % scaled rewardGiven per trial up to transition (mL)
+            toSumAccuracyTemp  = accuracy(startInd:transInd(transID)); % whether trials up to transition was rewarded
+            toSumTrialDurTemp  = lg.trialDurFull(startInd:transInd(transID)); % per trial durations including ITI up to transition (in seconds)
+            s3TOs1_reward(s3TOs1_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1)); % total reward (mL) from sess start to transition
+            s3TOs1_rewardRate(s3TOs1_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1))/(sum(toSumTrialDurTemp)/60)*1000; % reward (uL) / sess duration (mL) up to transition
+            
+            % if transition from state 3-->2
+        elseif lg.stateIndex(transInd(transID)) == 3 && lg.stateIndex(transInd(transID)+1) == 2
+            startInd = []; startInd = find(diff(lg.sessionID)~=0) ; % get index of all between sess transitions
+            startInd = startInd(startInd<transInd(transID)); % select all between sess transitions before current state transition
+            startInd = startInd(end) + 1; % the closest of these (+1 trial) is the first trial of session with current state transition
+            s3TOs2_COUNTER = s3TOs2_COUNTER+1;
+            toSumRewardTemp = []; toSumAccuracyTemp = []; toSumTrialDurTemp = [];
+            toSumRewardTemp    = rewardGiven(startInd:transInd(transID)); % scaled rewardGiven per trial up to transition (mL)
+            toSumAccuracyTemp  = accuracy(startInd:transInd(transID)); % whether trials up to transition was rewarded
+            toSumTrialDurTemp  = lg.trialDurFull(startInd:transInd(transID)); % per trial durations including ITI up to transition (in seconds)
+            s3TOs2_reward(s3TOs2_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1)); % total reward (mL) from sess start to transition
+            s3TOs2_rewardRate(s3TOs2_COUNTER) = sum(toSumRewardTemp(toSumAccuracyTemp==1))/(sum(toSumTrialDurTemp)/60)*1000; % reward (uL) / sess duration (mL) up to transition
+        else
+        end
     end
     
-    % drops blocks with perf <0.6 and excessTravel>0.1
-    [lgClean,~] = selectLogSubset(lg,[],[],[],[],0,0.6); 
+    % save vars
+    reward{counter}.s1TOs2     = s1TOs2_reward;
+    reward{counter}.s1TOs3     = s1TOs3_reward;
+    reward{counter}.s2TOs1     = s2TOs1_reward;
+    reward{counter}.s2TOs3     = s2TOs3_reward;
+    reward{counter}.s3TOs1     = s3TOs1_reward;
+    reward{counter}.s3TOs2     = s3TOs2_reward;
     
-    % subselect mazes in aoe and perm cues with matching cue stats
-    % did this for DMS/NAC comparison cause could seem odd if DMS data
-    % differed in repeated plots of the data
-    if contains(groupOrder{groupNum},'aoe')
-        removeInd = []; 
-        removeInd = lgClean.currMaze == 11;
-        lgClean  = structfun(@(x) x(~removeInd),lgClean,'UniformOutput',false);
-        removeInd = []; 
-        removeInd = lg.currMaze == 11;
-        lg       = structfun(@(x) x(~removeInd),lg,'UniformOutput',false);
-    elseif contains(groupOrder{groupNum},'pc')
-        removeInd = []; 
-        removeInd = lgClean.currMaze == 7;
-        lgClean  = structfun(@(x) x(~removeInd),lgClean,'UniformOutput',false);
-        removeInd = []; 
-        removeInd = lg.currMaze == 7;
-        lg       = structfun(@(x) x(~removeInd),lg,'UniformOutput',false);
-    else
-    end
-
-    % remove whole trial inhibition if present in log
-    if any(contains(unique(lg.laserEpoch),"whole"))
-        removeInd = []; 
-        removeInd = ismember(lg.laserEpoch,"whole");
-        lg       = structfun(@(x) x(~removeInd),lg,'UniformOutput',false);
-        removeInd = []; 
-        removeInd = ismember(lgClean.laserEpoch,"whole");
-        lgClean  = structfun(@(x) x(~removeInd),lgClean,'UniformOutput',false);
-    else
-    end
-        
-    % overall bias, delta bias, log of total off/on trials here
-    ipsiCon = 1; 
-    tempPerf = []; tempSumm = [];
-    [tempPerf, tempSumm] = xMousePerfBias(lgClean, ipsiCon);
-    biasOFF_xMouse{counter}(1,:)    = [tempPerf(:).contraBiasOFF]*100;   
-    biasON_xMouse{counter}(1,:)     = [tempPerf(:).contraBiasON]*100;     
-    biasDelta_xMouse{counter}(1,:)  = [tempPerf(:).contraBiasDiff]*100;         
-    nTrialsOFF_xGroup(counter)       = sum([tempPerf(:).nTrialsOFF]);
-    nTrialsON_xGroup(counter)        = sum([tempPerf(:).nTrialsON]);   
-    counter = counter + 1; 
+    rewardRate{counter}.s1TOs2 = s1TOs2_rewardRate;
+    rewardRate{counter}.s1TOs3 = s1TOs3_rewardRate;
+    rewardRate{counter}.s2TOs1 = s2TOs1_rewardRate;
+    rewardRate{counter}.s2TOs3 = s2TOs3_rewardRate;
+    rewardRate{counter}.s3TOs1 = s3TOs1_rewardRate;
+    rewardRate{counter}.s3TOs2 = s3TOs2_rewardRate;
+    
+    % count up for next lg
+    counter = counter +1;
+    
 end
 
-%% 
-clearvars -except lgDMSD2_aoe lgDMSD1_aoe lgDMSCtrl_aoe ...
-                  lgDMSD2_nd lgDMSD1_nd lgDMSCtrl_nd ...
-                  lgDMSD2_pc lgDMSD1_pc lgDMSCtrl_pc ...
-                  lgNACD2_aoe lgNACD1_aoe ...
-                  groupOrder biasOFF_xMouse biasON_xMouse biasDelta_xMouse ...
-                  nTrialsOFF_xGroup nTrialsON_xGroup
-                        
-%% panel 8b-f %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
-% plot off vs on bias and delta bias for indirect/direct/no opsin DMS
-% during evidence accumulation 
-displayStats = 1; % 0 to suppress display of 
-                  % (1) 1-way ANOVA of group on delta bias
-                  % (2) post-hoc ranksum unpaired comparison of delta bias
-                  %     across tasks                  
-      
-% update these 2(3 for title) variables to determine group to plot comparisons, each must much
-% the order defined in groupOrder to be accurate.%%%%%%%%%%%%%%%%%%%%%%%%%%
-titlestr    = 'DMSindirect'; % DMSindirect DMSdirect DMSnoOpsin indirect direct
-names2plot  = {'DMSD2_aoe'  ,'DMSD2_nd'   ,'DMSD2_pc'};   %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD2_aoe'  ,'DMSD2_nd'   ,'DMSD2_pc'};   %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD1_aoe'  ,'DMSD1_nd'   ,'DMSD1_pc'};   %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSCtrl_aoe','DMSCtrl_nd' ,'DMSCtrl_pc'}; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD2_aoe'  ,'NACD2_aoe'};                %panel 8E - AoE indirect pathway: DMS vs NAc
-%             {'DMSD1_aoe'  ,'NACD1_aoe'};                %panel 8F - AoE direct pathway: DMS vs NAc
-groups2plot = [1 2 3]; %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             [1 2 3]; %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             [4 5 6]; %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             [7 8 9]; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2
-%             [1 10];  %panel 8E - AoE indirect pathway: DMS vs NAc
-%             [4 11];  %panel 8F - AoE direct pathway: DMS vs NAc
+%% clearvars except source data used for plotting
+clearvars -except lgDMSD2 lgDMSD1 ...
+                  groupOrder reward rewardRate
+
+%% PLOTTING panel 12C,D,E,F
+% update these variables to match for
+d2orD1     = 2; % 2 for D2 and 1 or D1 (following groupOrder)
+dataToplot = reward{d2orD1}; % reward or rewardRate   
+yNames     = 'cumulative reward at transition (mL)'; 
+%            'cumulative reward at transition (mL)'
+%            'reward rate at transition (uL/min)'
+yLimits    = [0 1.5];
+%            [0 1.5] for reward
+%            [0 40]  for rewardRate
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if numel(groups2plot) == 3
-    xNames     = {'AoE';'ctrl#1';'ctrl#2'};
-    barColor   = {'k','m','c'};     
-    colorIdx   = {[0.8 0.8 0.8],[0.99 0.7 0.99], [0.7 0.99 0.99]}; 
-    xLimits    = [0.5 3.5];  
-    yLimits    = [-90 90];
-    catMarker  = {'x','x', 'x'};
+if d2orD1 == 1
+    titlestr = 'direct';
 else
-    xNames     = {'DMS';'NAc'};
-    barColor   = {'k','k'};     
-    colorIdx   = {[0.8 0.8 0.8],[0.8 0.8 0.8]}; 
-    xLimits    = [0.5 2.5];
-    yLimits    = [-90 90];
-    catMarker  = {'x','x'};
+    titlestr = 'indirect';
 end
 
-dataArrayDelta = [];
-dataDelta      = []; 
-dataArrayDelta = biasDelta_xMouse; 
-if numel(groups2plot) == 3
-    dataDelta      = [biasDelta_xMouse{groups2plot(1)}'; ...
-                      biasDelta_xMouse{groups2plot(2)}'; ...
-                      biasDelta_xMouse{groups2plot(3)}'];
-    xIdx           = [ones(size(biasDelta_xMouse{groups2plot(1)}))'*1;   ...
-                      ones(size(biasDelta_xMouse{groups2plot(2)}))'*2;  ...
-                      ones(size(biasDelta_xMouse{groups2plot(3)}))'*3];
-else
-    dataDelta      = [biasDelta_xMouse{groups2plot(1)}'; ...
-                      biasDelta_xMouse{groups2plot(2)}'];
-    xIdx           = [ones(size(biasDelta_xMouse{groups2plot(1)}))'*1;   ...
-                      ones(size(biasDelta_xMouse{groups2plot(2)}))'*2];
-end
-
+sxTOs1 = []; sxTOs2 = []; sxTOs3 = [];
+sxTOs1 = [dataToplot.s2TOs1';dataToplot.s3TOs1'];
+sxTOs2 = [dataToplot.s1TOs2';dataToplot.s3TOs2'];
+sxTOs3 = [dataToplot.s1TOs3';dataToplot.s2TOs3'];
 
 figure
-plot(xLimits(1):xLimits(2),zeros(1,numel(xLimits(1):xLimits(2))),'-','Color',[0.6 0.6 0.6]); hold on
+data = []; xIdx = []; 
+dataArray = []; colorIdx = [];
+dataArray = {sxTOs1,sxTOs2,sxTOs3};
+data      = [sxTOs1; sxTOs2; sxTOs3];
+xIdx      = [ones(numel(sxTOs1),1); ones(numel(sxTOs2),1)*2; ones(numel(sxTOs3),1)*3 ];
+catMarker = {'x','x', 'x'};
+colorIdx  = {[0 0.5 0.8]  [0.9 0.7 0.2] [0.9 0 0]};
+hold on
+plotSpread(data,'categoryIdx',xIdx,'distributionIdx',xIdx,'categoryColors',colorIdx,'categoryMarkers',catMarker);
+h = errorbar(1,nanmean(sxTOs1),nanstd(sxTOs1)./sqrt(numel(sxTOs1)-1), ...
+    '.-','linewidth',4,'color','b','markersize',0.1);  h.CapSize = 40;
+h = errorbar(2,nanmean(sxTOs2),nanstd(sxTOs2)./sqrt(numel(sxTOs2)-1), ...
+    '.-','linewidth',4,'color','y','markersize',0.1);  h.CapSize = 40;
+h = errorbar(3,nanmean(sxTOs3),nanstd(sxTOs3)./sqrt(numel(sxTOs3)-1), ...
+    '.-','linewidth',4,'color','r','markersize',0.1);  h.CapSize = 40;
 
-plotSpread(dataDelta,'categoryIdx',xIdx,'distributionIdx',xIdx,...
-    'categoryColors',colorIdx,'categoryMarkers',catMarker); hold on
-
-nTask = find(contains(groupOrder,names2plot{1}));
-h = errorbar(1,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-    '.-','linewidth',4,'color',barColor{1},'markersize',0.1); h.CapSize = 14; hold on
-text(0.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-text(0.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-text(0.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-
-nTask = find(contains(groupOrder,names2plot{2}));
-h = errorbar(2,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-    '.-','linewidth',4,'color',barColor{2},'markersize',0.1); h.CapSize = 14; hold on
-text(1.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-text(1.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-text(1.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-
-if numel(groups2plot) == 3
-    nTask = find(contains(groupOrder,names2plot{3}));
-    h = errorbar(3,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-        '.-','linewidth',4,'color',barColor{3},'markersize',0.1); h.CapSize = 14; hold on
-    text(2.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-    text(2.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-    text(2.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-else
-end
-
-ylabel('delta bias (%, on-off)','fontsize',12)
-box off
+set(gca,'xtick',1:3,'xticklabel',{'s1';'s2';'s3'})
+ylabel(yNames,'fontsize',12)
+xlim([.5 3.5])
 ylim(yLimits)
-xlim(xLimits)
-set(gca,'TickDir','out')
-set(gca,'xtick',1:numel(names2plot),'xticklabel',xNames)
-rotateXLabels(gca,45)
 title(titlestr)
-            
-if displayStats == 1
-    % unpaired stats for subplot 4 - delta bias across groups
-    groupVec   = categorical(xIdx);
-    [p,t,stats] = anova1(dataDelta,groupVec,'off');
-    text(xLimits(2)-.5,yLimits(1)*0.85,['Group p= ' num2str(p)],'FontSize',6)
-    text(xLimits(2)-.5,yLimits(1)*0.9,['df= ' num2str(stats.df)],'FontSize',6)
-    text(xLimits(2)-.5,yLimits(1)*0.95,['F= ' num2str((t{2,5}))],'FontSize',6)
-    
-    if numel(groups2plot) == 3
-        [g1Vg2_p, ~ , g1Vg2_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(2)},'method','approximate');
-        plot(1:2,[76,76],'k-')
-        text(0.75,78,['p= ' num2str(g1Vg2_p)],'FontSize',6)
-        text(1.25,78,['z= ' num2str(g1Vg2_stats.zval)],'FontSize',6)
-        text(1.75,78,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(2)})-2)],'FontSize',6)  
-         
-         
-        [g1Vg3_p, ~ , g1Vg3_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(3)},'method','approximate');                                 
-        plot(1:3,[80,80,80],'k-')
-        text(1.5,82,['p= ' num2str(g1Vg3_p)],'FontSize',6)
-        text(2,82,['z= ' num2str(g1Vg3_stats.zval)],'FontSize',6)
-        text(2.5,82,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(3)})-2)],'FontSize',6)                        
-         
-        [g2Vg3_p, ~ , g2Vg3_stats] = ranksum(dataArrayDelta{groups2plot(2)}, ...
-                                     dataArrayDelta{groups2plot(3)},'method','approximate');
-        plot(2:3,[72,72],'k-')
-        text(2,74,['p= ' num2str(g2Vg3_p)],'FontSize',6)
-        text(2.5,74,['z= ' num2str(g2Vg3_stats.zval)],'FontSize',6)
-        text(3,74,['df= ' num2str(numel(dataArrayDelta{groups2plot(2)})+ ...
-             numel(dataArrayDelta{groups2plot(3)})-2)],'FontSize',6)  
-         
-    else
-        
-        [g1Vg2_p, ~ , g1Vg2_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(2)},'method','approximate');         
-        plot(1:2,[80,80],'k-')
-        text(0.75,82,['p= ' num2str(g1Vg2_p)],'FontSize',6)
-        text(1.25,82,['z= ' num2str(g1Vg2_stats.zval)],'FontSize',6)
-        text(1.75,82,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(2)})-2)],'FontSize',6)                          
-    end                                                           
-else
-end              
-     
+box off
+xIdx2 = categorical(xIdx);
+[p,t,stats] = anova1(data,xIdx2,'off');
 
-%% 
-clearvars -except lgDMSD2_aoe lgDMSD1_aoe lgDMSCtrl_aoe ...
-                  lgDMSD2_nd lgDMSD1_nd lgDMSCtrl_nd ...
-                  lgDMSD2_pc lgDMSD1_pc lgDMSCtrl_pc ...
-                  lgNACD2_aoe lgNACD1_aoe ...
-                  groupOrder biasOFF_xMouse biasON_xMouse biasDelta_xMouse ...
-                  nTrialsOFF_xGroup nTrialsON_xGroup
-                        
-%% panel 8b-f %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
-% plot off vs on bias and delta bias for indirect/direct/no opsin DMS
-% during evidence accumulation 
-displayStats = 1; % 0 to suppress display of 
-                  % (1) 1-way ANOVA of group on delta bias
-                  % (2) post-hoc ranksum unpaired comparison of delta bias
-                  %     across tasks                  
-      
-% update these 2(3 for title) variables to determine group to plot comparisons, each must much
-% the order defined in groupOrder to be accurate.%%%%%%%%%%%%%%%%%%%%%%%%%%
-titlestr    = 'DMSdirect'; % DMSindirect DMSdirect DMSnoOpsin indirect direct
-names2plot  = {'DMSD1_aoe'  ,'DMSD1_nd'   ,'DMSD1_pc'};   %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD2_aoe'  ,'DMSD2_nd'   ,'DMSD2_pc'};   %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD1_aoe'  ,'DMSD1_nd'   ,'DMSD1_pc'};   %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSCtrl_aoe','DMSCtrl_nd' ,'DMSCtrl_pc'}; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD2_aoe'  ,'NACD2_aoe'};                %panel 8E - AoE indirect pathway: DMS vs NAc
-%             {'DMSD1_aoe'  ,'NACD1_aoe'};                %panel 8F - AoE direct pathway: DMS vs NAc
-groups2plot = [4 5 6]; %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             [1 2 3]; %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             [4 5 6]; %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             [7 8 9]; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2
-%             [1 10];  %panel 8E - AoE indirect pathway: DMS vs NAc
-%             [4 11];  %panel 8F - AoE direct pathway: DMS vs NAc
+[s1_s2_p,~,s1_s2_stats] = ranksum(data(xIdx==1),data(xIdx==2),'method','approximate');
+[s1_s3_p,~,s1_s3_stats] = ranksum(data(xIdx==1),data(xIdx==3),'method','approximate');
+[s2_s3_p,~,s2_s3_stats] = ranksum(data(xIdx==2),data(xIdx==3),'method','approximate');
+
+text(1.5,yLimits(2)*.75,['state p=' num2str(p)],'Color', 'k')
+text(1.5,yLimits(2)*.70,['f=' num2str(cell2mat(t(2,5)))],'Color', 'k')
+text(1.5,yLimits(2)*.65,['df=' num2str(stats.df)],'Color', 'k')
+
+plot(1:0.5:2,ones(1,3)*yLimits(2)*.9,'k-')
+text(1,yLimits(2)*.92,['p=' num2str(round(s1_s2_p,3))],'FontSize',8)
+text(1.5,yLimits(2)*.92,['z=' num2str(round(s1_s2_stats.zval,3))],'FontSize',8)
+plot(2:0.5:3,ones(1,3)*yLimits(2)*.85,'k-')
+text(2,yLimits(2)*.87,['p=' num2str(round(s2_s3_p,3))],'FontSize',8)
+text(2.5,yLimits(2)*.87,['z=' num2str(round(s2_s3_stats.zval,3))],'FontSize',8)
+plot(1:0.5:3,ones(1,5)*yLimits(2)*.95,'k-')
+text(1.2,yLimits(2)*.97,['p=' num2str(round(s1_s3_p,3))],'FontSize',8)
+text(1.8,yLimits(2)*.97,['z=' num2str(round(s1_s3_stats.zval,3))],'FontSize',8)
+
+%% clearvars except source data used for plotting
+clearvars -except lgDMSD2 lgDMSD1 ...
+                  groupOrder reward rewardRate
+
+%% PLOTTING panel 12C,D,E,F
+% update these variables to match for
+d2orD1     = 2; % 2 for D2 and 1 or D1 (following groupOrder)
+dataToplot = rewardRate{d2orD1}; % reward or rewardRate   
+yNames     = 'reward rate at transition (uL/min)'; 
+%            'cumulative reward at transition (mL)'
+%            'reward rate at transition (uL/min)'
+yLimits    = [0 40];
+%            [0 1.5] for reward
+%            [0 40]  for rewardRate
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if numel(groups2plot) == 3
-    xNames     = {'AoE';'ctrl#1';'ctrl#2'};
-    barColor   = {'k','m','c'};     
-    colorIdx   = {[0.8 0.8 0.8],[0.99 0.7 0.99], [0.7 0.99 0.99]}; 
-    xLimits    = [0.5 3.5];  
-    yLimits    = [-90 90];
-    catMarker  = {'x','x', 'x'};
+if d2orD1 == 1
+    titlestr = 'direct';
 else
-    xNames     = {'DMS';'NAc'};
-    barColor   = {'k','k'};     
-    colorIdx   = {[0.8 0.8 0.8],[0.8 0.8 0.8]}; 
-    xLimits    = [0.5 2.5];
-    yLimits    = [-90 90];
-    catMarker  = {'x','x'};
+    titlestr = 'indirect';
 end
 
-dataArrayDelta = [];
-dataDelta      = []; 
-dataArrayDelta = biasDelta_xMouse; 
-if numel(groups2plot) == 3
-    dataDelta      = [biasDelta_xMouse{groups2plot(1)}'; ...
-                      biasDelta_xMouse{groups2plot(2)}'; ...
-                      biasDelta_xMouse{groups2plot(3)}'];
-    xIdx           = [ones(size(biasDelta_xMouse{groups2plot(1)}))'*1;   ...
-                      ones(size(biasDelta_xMouse{groups2plot(2)}))'*2;  ...
-                      ones(size(biasDelta_xMouse{groups2plot(3)}))'*3];
-else
-    dataDelta      = [biasDelta_xMouse{groups2plot(1)}'; ...
-                      biasDelta_xMouse{groups2plot(2)}'];
-    xIdx           = [ones(size(biasDelta_xMouse{groups2plot(1)}))'*1;   ...
-                      ones(size(biasDelta_xMouse{groups2plot(2)}))'*2];
-end
-
+sxTOs1 = []; sxTOs2 = []; sxTOs3 = [];
+sxTOs1 = [dataToplot.s2TOs1';dataToplot.s3TOs1'];
+sxTOs2 = [dataToplot.s1TOs2';dataToplot.s3TOs2'];
+sxTOs3 = [dataToplot.s1TOs3';dataToplot.s2TOs3'];
 
 figure
-plot(xLimits(1):xLimits(2),zeros(1,numel(xLimits(1):xLimits(2))),'-','Color',[0.6 0.6 0.6]); hold on
+data = []; xIdx = []; 
+dataArray = []; colorIdx = [];
+dataArray = {sxTOs1,sxTOs2,sxTOs3};
+data      = [sxTOs1; sxTOs2; sxTOs3];
+xIdx      = [ones(numel(sxTOs1),1); ones(numel(sxTOs2),1)*2; ones(numel(sxTOs3),1)*3 ];
+catMarker = {'x','x', 'x'};
+colorIdx  = {[0 0.5 0.8]  [0.9 0.7 0.2] [0.9 0 0]};
+hold on
+plotSpread(data,'categoryIdx',xIdx,'distributionIdx',xIdx,'categoryColors',colorIdx,'categoryMarkers',catMarker);
+h = errorbar(1,nanmean(sxTOs1),nanstd(sxTOs1)./sqrt(numel(sxTOs1)-1), ...
+    '.-','linewidth',4,'color','b','markersize',0.1);  h.CapSize = 40;
+h = errorbar(2,nanmean(sxTOs2),nanstd(sxTOs2)./sqrt(numel(sxTOs2)-1), ...
+    '.-','linewidth',4,'color','y','markersize',0.1);  h.CapSize = 40;
+h = errorbar(3,nanmean(sxTOs3),nanstd(sxTOs3)./sqrt(numel(sxTOs3)-1), ...
+    '.-','linewidth',4,'color','r','markersize',0.1);  h.CapSize = 40;
 
-plotSpread(dataDelta,'categoryIdx',xIdx,'distributionIdx',xIdx,...
-    'categoryColors',colorIdx,'categoryMarkers',catMarker); hold on
-
-nTask = find(contains(groupOrder,names2plot{1}));
-h = errorbar(1,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-    '.-','linewidth',4,'color',barColor{1},'markersize',0.1); h.CapSize = 14; hold on
-text(0.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-text(0.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-text(0.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-
-nTask = find(contains(groupOrder,names2plot{2}));
-h = errorbar(2,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-    '.-','linewidth',4,'color',barColor{2},'markersize',0.1); h.CapSize = 14; hold on
-text(1.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-text(1.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-text(1.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-
-if numel(groups2plot) == 3
-    nTask = find(contains(groupOrder,names2plot{3}));
-    h = errorbar(3,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-        '.-','linewidth',4,'color',barColor{3},'markersize',0.1); h.CapSize = 14; hold on
-    text(2.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-    text(2.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-    text(2.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-else
-end
-
-ylabel('delta bias (%, on-off)','fontsize',12)
-box off
+set(gca,'xtick',1:3,'xticklabel',{'s1';'s2';'s3'})
+ylabel(yNames,'fontsize',12)
+xlim([.5 3.5])
 ylim(yLimits)
-xlim(xLimits)
-set(gca,'TickDir','out')
-set(gca,'xtick',1:numel(names2plot),'xticklabel',xNames)
-rotateXLabels(gca,45)
 title(titlestr)
-            
-if displayStats == 1
-    % unpaired stats for subplot 4 - delta bias across groups
-    groupVec   = categorical(xIdx);
-    [p,t,stats] = anova1(dataDelta,groupVec,'off');
-    text(xLimits(2)-.5,yLimits(1)*0.85,['Group p= ' num2str(p)],'FontSize',6)
-    text(xLimits(2)-.5,yLimits(1)*0.9,['df= ' num2str(stats.df)],'FontSize',6)
-    text(xLimits(2)-.5,yLimits(1)*0.95,['F= ' num2str((t{2,5}))],'FontSize',6)
-    
-    if numel(groups2plot) == 3
-        [g1Vg2_p, ~ , g1Vg2_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(2)},'method','approximate');
-        plot(1:2,[76,76],'k-')
-        text(0.75,78,['p= ' num2str(g1Vg2_p)],'FontSize',6)
-        text(1.25,78,['z= ' num2str(g1Vg2_stats.zval)],'FontSize',6)
-        text(1.75,78,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(2)})-2)],'FontSize',6)  
-         
-         
-        [g1Vg3_p, ~ , g1Vg3_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(3)},'method','approximate');                                 
-        plot(1:3,[80,80,80],'k-')
-        text(1.5,82,['p= ' num2str(g1Vg3_p)],'FontSize',6)
-        text(2,82,['z= ' num2str(g1Vg3_stats.zval)],'FontSize',6)
-        text(2.5,82,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(3)})-2)],'FontSize',6)                        
-         
-        [g2Vg3_p, ~ , g2Vg3_stats] = ranksum(dataArrayDelta{groups2plot(2)}, ...
-                                     dataArrayDelta{groups2plot(3)},'method','approximate');
-        plot(2:3,[72,72],'k-')
-        text(2,74,['p= ' num2str(g2Vg3_p)],'FontSize',6)
-        text(2.5,74,['z= ' num2str(g2Vg3_stats.zval)],'FontSize',6)
-        text(3,74,['df= ' num2str(numel(dataArrayDelta{groups2plot(2)})+ ...
-             numel(dataArrayDelta{groups2plot(3)})-2)],'FontSize',6)  
-         
-    else
-        
-        [g1Vg2_p, ~ , g1Vg2_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(2)},'method','approximate');         
-        plot(1:2,[80,80],'k-')
-        text(0.75,82,['p= ' num2str(g1Vg2_p)],'FontSize',6)
-        text(1.25,82,['z= ' num2str(g1Vg2_stats.zval)],'FontSize',6)
-        text(1.75,82,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(2)})-2)],'FontSize',6)                          
-    end                                                           
-else
-end     
+box off
+xIdx2 = categorical(xIdx);
+[p,t,stats] = anova1(data,xIdx2,'off');
 
-%% 
-clearvars -except lgDMSD2_aoe lgDMSD1_aoe lgDMSCtrl_aoe ...
-                  lgDMSD2_nd lgDMSD1_nd lgDMSCtrl_nd ...
-                  lgDMSD2_pc lgDMSD1_pc lgDMSCtrl_pc ...
-                  lgNACD2_aoe lgNACD1_aoe ...
-                  groupOrder biasOFF_xMouse biasON_xMouse biasDelta_xMouse ...
-                  nTrialsOFF_xGroup nTrialsON_xGroup
-                        
-%% panel 8b-f %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
-% plot off vs on bias and delta bias for indirect/direct/no opsin DMS
-% during evidence accumulation 
-displayStats = 1; % 0 to suppress display of 
-                  % (1) 1-way ANOVA of group on delta bias
-                  % (2) post-hoc ranksum unpaired comparison of delta bias
-                  %     across tasks                  
-      
-% update these 2(3 for title) variables to determine group to plot comparisons, each must much
-% the order defined in groupOrder to be accurate.%%%%%%%%%%%%%%%%%%%%%%%%%%
-titlestr    = 'DMSnoOpsin'; % DMSindirect DMSdirect DMSnoOpsin indirect direct
-names2plot  = {'DMSCtrl_aoe','DMSCtrl_nd' ,'DMSCtrl_pc'}; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD2_aoe'  ,'DMSD2_nd'   ,'DMSD2_pc'};   %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD1_aoe'  ,'DMSD1_nd'   ,'DMSD1_pc'};   %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSCtrl_aoe','DMSCtrl_nd' ,'DMSCtrl_pc'}; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD2_aoe'  ,'NACD2_aoe'};                %panel 8E - AoE indirect pathway: DMS vs NAc
-%             {'DMSD1_aoe'  ,'NACD1_aoe'};                %panel 8F - AoE direct pathway: DMS vs NAc
-groups2plot = [7 8 9]; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2 
-%             [1 2 3]; %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             [4 5 6]; %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             [7 8 9]; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2
-%             [1 10];  %panel 8E - AoE indirect pathway: DMS vs NAc
-%             [4 11];  %panel 8F - AoE direct pathway: DMS vs NAc
+[s1_s2_p,~,s1_s2_stats] = ranksum(data(xIdx==1),data(xIdx==2),'method','approximate');
+[s1_s3_p,~,s1_s3_stats] = ranksum(data(xIdx==1),data(xIdx==3),'method','approximate');
+[s2_s3_p,~,s2_s3_stats] = ranksum(data(xIdx==2),data(xIdx==3),'method','approximate');
+
+text(1.5,yLimits(2)*.75,['state p=' num2str(p)],'Color', 'k')
+text(1.5,yLimits(2)*.70,['f=' num2str(cell2mat(t(2,5)))],'Color', 'k')
+text(1.5,yLimits(2)*.65,['df=' num2str(stats.df)],'Color', 'k')
+
+plot(1:0.5:2,ones(1,3)*yLimits(2)*.9,'k-')
+text(1,yLimits(2)*.92,['p=' num2str(round(s1_s2_p,3))],'FontSize',8)
+text(1.5,yLimits(2)*.92,['z=' num2str(round(s1_s2_stats.zval,3))],'FontSize',8)
+plot(2:0.5:3,ones(1,3)*yLimits(2)*.85,'k-')
+text(2,yLimits(2)*.87,['p=' num2str(round(s2_s3_p,3))],'FontSize',8)
+text(2.5,yLimits(2)*.87,['z=' num2str(round(s2_s3_stats.zval,3))],'FontSize',8)
+plot(1:0.5:3,ones(1,5)*yLimits(2)*.95,'k-')
+text(1.2,yLimits(2)*.97,['p=' num2str(round(s1_s3_p,3))],'FontSize',8)
+text(1.8,yLimits(2)*.97,['z=' num2str(round(s1_s3_stats.zval,3))],'FontSize',8)
+
+%% clearvars except source data used for plotting
+clearvars -except lgDMSD2 lgDMSD1 ...
+                  groupOrder reward rewardRate
+
+%% PLOTTING panel 12C,D,E,F
+% update these variables to match for
+d2orD1     = 1; % 2 for D2 and 1 or D1 (following groupOrder)
+dataToplot = reward{d2orD1}; % reward or rewardRate   
+yNames     = 'cumulative reward at transition (mL)'; 
+%            'cumulative reward at transition (mL)'
+%            'reward rate at transition (uL/min)'
+yLimits    = [0 1.5];
+%            [0 1.5] for reward
+%            [0 40]  for rewardRate
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if numel(groups2plot) == 3
-    xNames     = {'AoE';'ctrl#1';'ctrl#2'};
-    barColor   = {'k','m','c'};     
-    colorIdx   = {[0.8 0.8 0.8],[0.99 0.7 0.99], [0.7 0.99 0.99]}; 
-    xLimits    = [0.5 3.5];  
-    yLimits    = [-90 90];
-    catMarker  = {'x','x', 'x'};
+if d2orD1 == 1
+    titlestr = 'direct';
 else
-    xNames     = {'DMS';'NAc'};
-    barColor   = {'k','k'};     
-    colorIdx   = {[0.8 0.8 0.8],[0.8 0.8 0.8]}; 
-    xLimits    = [0.5 2.5];
-    yLimits    = [-90 90];
-    catMarker  = {'x','x'};
+    titlestr = 'indirect';
 end
 
-dataArrayDelta = [];
-dataDelta      = []; 
-dataArrayDelta = biasDelta_xMouse; 
-if numel(groups2plot) == 3
-    dataDelta      = [biasDelta_xMouse{groups2plot(1)}'; ...
-                      biasDelta_xMouse{groups2plot(2)}'; ...
-                      biasDelta_xMouse{groups2plot(3)}'];
-    xIdx           = [ones(size(biasDelta_xMouse{groups2plot(1)}))'*1;   ...
-                      ones(size(biasDelta_xMouse{groups2plot(2)}))'*2;  ...
-                      ones(size(biasDelta_xMouse{groups2plot(3)}))'*3];
-else
-    dataDelta      = [biasDelta_xMouse{groups2plot(1)}'; ...
-                      biasDelta_xMouse{groups2plot(2)}'];
-    xIdx           = [ones(size(biasDelta_xMouse{groups2plot(1)}))'*1;   ...
-                      ones(size(biasDelta_xMouse{groups2plot(2)}))'*2];
-end
-
+sxTOs1 = []; sxTOs2 = []; sxTOs3 = [];
+sxTOs1 = [dataToplot.s2TOs1';dataToplot.s3TOs1'];
+sxTOs2 = [dataToplot.s1TOs2';dataToplot.s3TOs2'];
+sxTOs3 = [dataToplot.s1TOs3';dataToplot.s2TOs3'];
 
 figure
-plot(xLimits(1):xLimits(2),zeros(1,numel(xLimits(1):xLimits(2))),'-','Color',[0.6 0.6 0.6]); hold on
+data = []; xIdx = []; 
+dataArray = []; colorIdx = [];
+dataArray = {sxTOs1,sxTOs2,sxTOs3};
+data      = [sxTOs1; sxTOs2; sxTOs3];
+xIdx      = [ones(numel(sxTOs1),1); ones(numel(sxTOs2),1)*2; ones(numel(sxTOs3),1)*3 ];
+catMarker = {'x','x', 'x'};
+colorIdx  = {[0 0.5 0.8]  [0.9 0.7 0.2] [0.9 0 0]};
+hold on
+plotSpread(data,'categoryIdx',xIdx,'distributionIdx',xIdx,'categoryColors',colorIdx,'categoryMarkers',catMarker);
+h = errorbar(1,nanmean(sxTOs1),nanstd(sxTOs1)./sqrt(numel(sxTOs1)-1), ...
+    '.-','linewidth',4,'color','b','markersize',0.1);  h.CapSize = 40;
+h = errorbar(2,nanmean(sxTOs2),nanstd(sxTOs2)./sqrt(numel(sxTOs2)-1), ...
+    '.-','linewidth',4,'color','y','markersize',0.1);  h.CapSize = 40;
+h = errorbar(3,nanmean(sxTOs3),nanstd(sxTOs3)./sqrt(numel(sxTOs3)-1), ...
+    '.-','linewidth',4,'color','r','markersize',0.1);  h.CapSize = 40;
 
-plotSpread(dataDelta,'categoryIdx',xIdx,'distributionIdx',xIdx,...
-    'categoryColors',colorIdx,'categoryMarkers',catMarker); hold on
-
-nTask = find(contains(groupOrder,names2plot{1}));
-h = errorbar(1,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-    '.-','linewidth',4,'color',barColor{1},'markersize',0.1); h.CapSize = 14; hold on
-text(0.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-text(0.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-text(0.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-
-nTask = find(contains(groupOrder,names2plot{2}));
-h = errorbar(2,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-    '.-','linewidth',4,'color',barColor{2},'markersize',0.1); h.CapSize = 14; hold on
-text(1.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-text(1.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-text(1.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-
-if numel(groups2plot) == 3
-    nTask = find(contains(groupOrder,names2plot{3}));
-    h = errorbar(3,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-        '.-','linewidth',4,'color',barColor{3},'markersize',0.1); h.CapSize = 14; hold on
-    text(2.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-    text(2.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-    text(2.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-else
-end
-
-ylabel('delta bias (%, on-off)','fontsize',12)
-box off
+set(gca,'xtick',1:3,'xticklabel',{'s1';'s2';'s3'})
+ylabel(yNames,'fontsize',12)
+xlim([.5 3.5])
 ylim(yLimits)
-xlim(xLimits)
-set(gca,'TickDir','out')
-set(gca,'xtick',1:numel(names2plot),'xticklabel',xNames)
-rotateXLabels(gca,45)
 title(titlestr)
-            
-if displayStats == 1
-    % unpaired stats for subplot 4 - delta bias across groups
-    groupVec   = categorical(xIdx);
-    [p,t,stats] = anova1(dataDelta,groupVec,'off');
-    text(xLimits(2)-.5,yLimits(1)*0.85,['Group p= ' num2str(p)],'FontSize',6)
-    text(xLimits(2)-.5,yLimits(1)*0.9,['df= ' num2str(stats.df)],'FontSize',6)
-    text(xLimits(2)-.5,yLimits(1)*0.95,['F= ' num2str((t{2,5}))],'FontSize',6)
-    
-    if numel(groups2plot) == 3
-        [g1Vg2_p, ~ , g1Vg2_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(2)},'method','approximate');
-        plot(1:2,[76,76],'k-')
-        text(0.75,78,['p= ' num2str(g1Vg2_p)],'FontSize',6)
-        text(1.25,78,['z= ' num2str(g1Vg2_stats.zval)],'FontSize',6)
-        text(1.75,78,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(2)})-2)],'FontSize',6)  
-         
-         
-        [g1Vg3_p, ~ , g1Vg3_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(3)},'method','approximate');                                 
-        plot(1:3,[80,80,80],'k-')
-        text(1.5,82,['p= ' num2str(g1Vg3_p)],'FontSize',6)
-        text(2,82,['z= ' num2str(g1Vg3_stats.zval)],'FontSize',6)
-        text(2.5,82,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(3)})-2)],'FontSize',6)                        
-         
-        [g2Vg3_p, ~ , g2Vg3_stats] = ranksum(dataArrayDelta{groups2plot(2)}, ...
-                                     dataArrayDelta{groups2plot(3)},'method','approximate');
-        plot(2:3,[72,72],'k-')
-        text(2,74,['p= ' num2str(g2Vg3_p)],'FontSize',6)
-        text(2.5,74,['z= ' num2str(g2Vg3_stats.zval)],'FontSize',6)
-        text(3,74,['df= ' num2str(numel(dataArrayDelta{groups2plot(2)})+ ...
-             numel(dataArrayDelta{groups2plot(3)})-2)],'FontSize',6)  
-         
-    else
-        
-        [g1Vg2_p, ~ , g1Vg2_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(2)},'method','approximate');         
-        plot(1:2,[80,80],'k-')
-        text(0.75,82,['p= ' num2str(g1Vg2_p)],'FontSize',6)
-        text(1.25,82,['z= ' num2str(g1Vg2_stats.zval)],'FontSize',6)
-        text(1.75,82,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(2)})-2)],'FontSize',6)                          
-    end                                                           
-else
-end     
+box off
+xIdx2 = categorical(xIdx);
+[p,t,stats] = anova1(data,xIdx2,'off');
 
-%% 
-clearvars -except lgDMSD2_aoe lgDMSD1_aoe lgDMSCtrl_aoe ...
-                  lgDMSD2_nd lgDMSD1_nd lgDMSCtrl_nd ...
-                  lgDMSD2_pc lgDMSD1_pc lgDMSCtrl_pc ...
-                  lgNACD2_aoe lgNACD1_aoe ...
-                  groupOrder biasOFF_xMouse biasON_xMouse biasDelta_xMouse ...
-                  nTrialsOFF_xGroup nTrialsON_xGroup
-                        
-%% panel 8b-f %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
-% plot off vs on bias and delta bias for indirect/direct/no opsin DMS
-% during evidence accumulation 
-displayStats = 1; % 0 to suppress display of 
-                  % (1) 1-way ANOVA of group on delta bias
-                  % (2) post-hoc ranksum unpaired comparison of delta bias
-                  %     across tasks                  
-      
-% update these 2(3 for title) variables to determine group to plot comparisons, each must much
-% the order defined in groupOrder to be accurate.%%%%%%%%%%%%%%%%%%%%%%%%%%
-titlestr    = 'indirect'; % DMSindirect DMSdirect DMSnoOpsin indirect direct
-names2plot  = {'DMSD2_aoe'  ,'NACD2_aoe'};                %panel 8E - AoE indirect pathway: DMS vs NAc
-%             {'DMSD2_aoe'  ,'DMSD2_nd'   ,'DMSD2_pc'};   %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD1_aoe'  ,'DMSD1_nd'   ,'DMSD1_pc'};   %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSCtrl_aoe','DMSCtrl_nd' ,'DMSCtrl_pc'}; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD2_aoe'  ,'NACD2_aoe'};                %panel 8E - AoE indirect pathway: DMS vs NAc
-%             {'DMSD1_aoe'  ,'NACD1_aoe'};                %panel 8F - AoE direct pathway: DMS vs NAc
-groups2plot = [1 10];  %panel 8E - AoE indirect pathway: DMS vs NAc
-%             [1 2 3]; %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             [4 5 6]; %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             [7 8 9]; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2
-%             [1 10];  %panel 8E - AoE indirect pathway: DMS vs NAc
-%             [4 11];  %panel 8F - AoE direct pathway: DMS vs NAc
+[s1_s2_p,~,s1_s2_stats] = ranksum(data(xIdx==1),data(xIdx==2),'method','approximate');
+[s1_s3_p,~,s1_s3_stats] = ranksum(data(xIdx==1),data(xIdx==3),'method','approximate');
+[s2_s3_p,~,s2_s3_stats] = ranksum(data(xIdx==2),data(xIdx==3),'method','approximate');
+
+text(1.5,yLimits(2)*.75,['state p=' num2str(p)],'Color', 'k')
+text(1.5,yLimits(2)*.70,['f=' num2str(cell2mat(t(2,5)))],'Color', 'k')
+text(1.5,yLimits(2)*.65,['df=' num2str(stats.df)],'Color', 'k')
+
+plot(1:0.5:2,ones(1,3)*yLimits(2)*.9,'k-')
+text(1,yLimits(2)*.92,['p=' num2str(round(s1_s2_p,3))],'FontSize',8)
+text(1.5,yLimits(2)*.92,['z=' num2str(round(s1_s2_stats.zval,3))],'FontSize',8)
+plot(2:0.5:3,ones(1,3)*yLimits(2)*.85,'k-')
+text(2,yLimits(2)*.87,['p=' num2str(round(s2_s3_p,3))],'FontSize',8)
+text(2.5,yLimits(2)*.87,['z=' num2str(round(s2_s3_stats.zval,3))],'FontSize',8)
+plot(1:0.5:3,ones(1,5)*yLimits(2)*.95,'k-')
+text(1.2,yLimits(2)*.97,['p=' num2str(round(s1_s3_p,3))],'FontSize',8)
+text(1.8,yLimits(2)*.97,['z=' num2str(round(s1_s3_stats.zval,3))],'FontSize',8)
+
+%% clearvars except source data used for plotting
+clearvars -except lgDMSD2 lgDMSD1 ...
+                  groupOrder reward rewardRate
+
+%% PLOTTING panel 12C,D,E,F
+% update these variables to match for
+d2orD1     = 1; % 2 for D2 and 1 or D1 (following groupOrder)
+dataToplot = rewardRate{d2orD1}; % reward or rewardRate   
+yNames     = 'reward rate at transition (uL/min)'; 
+%            'cumulative reward at transition (mL)'
+%            'reward rate at transition (uL/min)'
+yLimits    = [0 40];
+%            [0 1.5] for reward
+%            [0 40]  for rewardRate
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if numel(groups2plot) == 3
-    xNames     = {'AoE';'ctrl#1';'ctrl#2'};
-    barColor   = {'k','m','c'};     
-    colorIdx   = {[0.8 0.8 0.8],[0.99 0.7 0.99], [0.7 0.99 0.99]}; 
-    xLimits    = [0.5 3.5];  
-    yLimits    = [-90 90];
-    catMarker  = {'x','x', 'x'};
+if d2orD1 == 1
+    titlestr = 'direct';
 else
-    xNames     = {'DMS';'NAc'};
-    barColor   = {'k','k'};     
-    colorIdx   = {[0.8 0.8 0.8],[0.8 0.8 0.8]}; 
-    xLimits    = [0.5 2.5];
-    yLimits    = [-90 90];
-    catMarker  = {'x','x'};
+    titlestr = 'indirect';
 end
 
-dataArrayDelta = [];
-dataDelta      = []; 
-dataArrayDelta = biasDelta_xMouse; 
-if numel(groups2plot) == 3
-    dataDelta      = [biasDelta_xMouse{groups2plot(1)}'; ...
-                      biasDelta_xMouse{groups2plot(2)}'; ...
-                      biasDelta_xMouse{groups2plot(3)}'];
-    xIdx           = [ones(size(biasDelta_xMouse{groups2plot(1)}))'*1;   ...
-                      ones(size(biasDelta_xMouse{groups2plot(2)}))'*2;  ...
-                      ones(size(biasDelta_xMouse{groups2plot(3)}))'*3];
-else
-    dataDelta      = [biasDelta_xMouse{groups2plot(1)}'; ...
-                      biasDelta_xMouse{groups2plot(2)}'];
-    xIdx           = [ones(size(biasDelta_xMouse{groups2plot(1)}))'*1;   ...
-                      ones(size(biasDelta_xMouse{groups2plot(2)}))'*2];
-end
-
+sxTOs1 = []; sxTOs2 = []; sxTOs3 = [];
+sxTOs1 = [dataToplot.s2TOs1';dataToplot.s3TOs1'];
+sxTOs2 = [dataToplot.s1TOs2';dataToplot.s3TOs2'];
+sxTOs3 = [dataToplot.s1TOs3';dataToplot.s2TOs3'];
 
 figure
-plot(xLimits(1):xLimits(2),zeros(1,numel(xLimits(1):xLimits(2))),'-','Color',[0.6 0.6 0.6]); hold on
+data = []; xIdx = []; 
+dataArray = []; colorIdx = [];
+dataArray = {sxTOs1,sxTOs2,sxTOs3};
+data      = [sxTOs1; sxTOs2; sxTOs3];
+xIdx      = [ones(numel(sxTOs1),1); ones(numel(sxTOs2),1)*2; ones(numel(sxTOs3),1)*3 ];
+catMarker = {'x','x', 'x'};
+colorIdx  = {[0 0.5 0.8]  [0.9 0.7 0.2] [0.9 0 0]};
+hold on
+plotSpread(data,'categoryIdx',xIdx,'distributionIdx',xIdx,'categoryColors',colorIdx,'categoryMarkers',catMarker);
+h = errorbar(1,nanmean(sxTOs1),nanstd(sxTOs1)./sqrt(numel(sxTOs1)-1), ...
+    '.-','linewidth',4,'color','b','markersize',0.1);  h.CapSize = 40;
+h = errorbar(2,nanmean(sxTOs2),nanstd(sxTOs2)./sqrt(numel(sxTOs2)-1), ...
+    '.-','linewidth',4,'color','y','markersize',0.1);  h.CapSize = 40;
+h = errorbar(3,nanmean(sxTOs3),nanstd(sxTOs3)./sqrt(numel(sxTOs3)-1), ...
+    '.-','linewidth',4,'color','r','markersize',0.1);  h.CapSize = 40;
 
-plotSpread(dataDelta,'categoryIdx',xIdx,'distributionIdx',xIdx,...
-    'categoryColors',colorIdx,'categoryMarkers',catMarker); hold on
-
-nTask = find(contains(groupOrder,names2plot{1}));
-h = errorbar(1,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-    '.-','linewidth',4,'color',barColor{1},'markersize',0.1); h.CapSize = 14; hold on
-text(0.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-text(0.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-text(0.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-
-nTask = find(contains(groupOrder,names2plot{2}));
-h = errorbar(2,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-    '.-','linewidth',4,'color',barColor{2},'markersize',0.1); h.CapSize = 14; hold on
-text(1.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-text(1.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-text(1.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-
-if numel(groups2plot) == 3
-    nTask = find(contains(groupOrder,names2plot{3}));
-    h = errorbar(3,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-        '.-','linewidth',4,'color',barColor{3},'markersize',0.1); h.CapSize = 14; hold on
-    text(2.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-    text(2.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-    text(2.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-else
-end
-
-ylabel('delta bias (%, on-off)','fontsize',12)
-box off
+set(gca,'xtick',1:3,'xticklabel',{'s1';'s2';'s3'})
+ylabel(yNames,'fontsize',12)
+xlim([.5 3.5])
 ylim(yLimits)
-xlim(xLimits)
-set(gca,'TickDir','out')
-set(gca,'xtick',1:numel(names2plot),'xticklabel',xNames)
-rotateXLabels(gca,45)
 title(titlestr)
-            
-if displayStats == 1
-    % unpaired stats for subplot 4 - delta bias across groups
-    groupVec   = categorical(xIdx);
-    [p,t,stats] = anova1(dataDelta,groupVec,'off');
-    text(xLimits(2)-.5,yLimits(1)*0.85,['Group p= ' num2str(p)],'FontSize',6)
-    text(xLimits(2)-.5,yLimits(1)*0.9,['df= ' num2str(stats.df)],'FontSize',6)
-    text(xLimits(2)-.5,yLimits(1)*0.95,['F= ' num2str((t{2,5}))],'FontSize',6)
-    
-    if numel(groups2plot) == 3
-        [g1Vg2_p, ~ , g1Vg2_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(2)},'method','approximate');
-        plot(1:2,[76,76],'k-')
-        text(0.75,78,['p= ' num2str(g1Vg2_p)],'FontSize',6)
-        text(1.25,78,['z= ' num2str(g1Vg2_stats.zval)],'FontSize',6)
-        text(1.75,78,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(2)})-2)],'FontSize',6)  
-         
-         
-        [g1Vg3_p, ~ , g1Vg3_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(3)},'method','approximate');                                 
-        plot(1:3,[80,80,80],'k-')
-        text(1.5,82,['p= ' num2str(g1Vg3_p)],'FontSize',6)
-        text(2,82,['z= ' num2str(g1Vg3_stats.zval)],'FontSize',6)
-        text(2.5,82,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(3)})-2)],'FontSize',6)                        
-         
-        [g2Vg3_p, ~ , g2Vg3_stats] = ranksum(dataArrayDelta{groups2plot(2)}, ...
-                                     dataArrayDelta{groups2plot(3)},'method','approximate');
-        plot(2:3,[72,72],'k-')
-        text(2,74,['p= ' num2str(g2Vg3_p)],'FontSize',6)
-        text(2.5,74,['z= ' num2str(g2Vg3_stats.zval)],'FontSize',6)
-        text(3,74,['df= ' num2str(numel(dataArrayDelta{groups2plot(2)})+ ...
-             numel(dataArrayDelta{groups2plot(3)})-2)],'FontSize',6)  
-         
-    else
-        
-        [g1Vg2_p, ~ , g1Vg2_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(2)},'method','approximate');         
-        plot(1:2,[80,80],'k-')
-        text(0.75,82,['p= ' num2str(g1Vg2_p)],'FontSize',6)
-        text(1.25,82,['z= ' num2str(g1Vg2_stats.zval)],'FontSize',6)
-        text(1.75,82,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(2)})-2)],'FontSize',6)                          
-    end                                                           
-else
-end     
-
-%% clear all vars except source data for plots
-clearvars -except lgDMSD2_aoe lgDMSD1_aoe lgDMSCtrl_aoe ...
-                  lgDMSD2_nd lgDMSD1_nd lgDMSCtrl_nd ...
-                  lgDMSD2_pc lgDMSD1_pc lgDMSCtrl_pc ...
-                  lgNACD2_aoe lgNACD1_aoe ...
-                  groupOrder biasOFF_xMouse biasON_xMouse biasDelta_xMouse ...
-                  nTrialsOFF_xGroup nTrialsON_xGroup
-                        
-%% panel 8b-f %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
-% plot off vs on bias and delta bias for indirect/direct/no opsin DMS
-% during evidence accumulation 
-displayStats = 1; % 0 to suppress display of 
-                  % (1) 1-way ANOVA of group on delta bias
-                  % (2) post-hoc ranksum unpaired comparison of delta bias
-                  %     across tasks                  
-      
-% update these 2(3 for title) variables to determine group to plot comparisons, each must much
-% the order defined in groupOrder to be accurate.%%%%%%%%%%%%%%%%%%%%%%%%%%
-titlestr    = 'direct'; % DMSindirect DMSdirect DMSnoOpsin indirect direct
-names2plot  = {'DMSD1_aoe'  ,'NACD1_aoe'};                %panel 8F - AoE direct pathway: DMS vs NAc
-%             {'DMSD2_aoe'  ,'DMSD2_nd'   ,'DMSD2_pc'};   %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD1_aoe'  ,'DMSD1_nd'   ,'DMSD1_pc'};   %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSCtrl_aoe','DMSCtrl_nd' ,'DMSCtrl_pc'}; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2
-%             {'DMSD2_aoe'  ,'NACD2_aoe'};                %panel 8E - AoE indirect pathway: DMS vs NAc
-%             {'DMSD1_aoe'  ,'NACD1_aoe'};                %panel 8F - AoE direct pathway: DMS vs NAc
-groups2plot = [4 11];  %panel 8F - AoE direct pathway: DMS vs NAc
-%             [1 2 3]; %panel 8B - indirect DMS: aoe, ctrl#1, ctrl#2
-%             [4 5 6]; %panel 8C - direct DMS: aoe, ctrl#1, ctrl#2
-%             [7 8 9]; %panel 8D - no opsin DMS: aoe, ctrl#1, ctrl#2
-%             [1 10];  %panel 8E - AoE indirect pathway: DMS vs NAc
-%             [4 11];  %panel 8F - AoE direct pathway: DMS vs NAc
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-if numel(groups2plot) == 3
-    xNames     = {'AoE';'ctrl#1';'ctrl#2'};
-    barColor   = {'k','m','c'};     
-    colorIdx   = {[0.8 0.8 0.8],[0.99 0.7 0.99], [0.7 0.99 0.99]}; 
-    xLimits    = [0.5 3.5];  
-    yLimits    = [-90 90];
-    catMarker  = {'x','x', 'x'};
-else
-    xNames     = {'DMS';'NAc'};
-    barColor   = {'k','k'};     
-    colorIdx   = {[0.8 0.8 0.8],[0.8 0.8 0.8]}; 
-    xLimits    = [0.5 2.5];
-    yLimits    = [-90 90];
-    catMarker  = {'x','x'};
-end
-
-dataArrayDelta = [];
-dataDelta      = []; 
-dataArrayDelta = biasDelta_xMouse; 
-if numel(groups2plot) == 3
-    dataDelta      = [biasDelta_xMouse{groups2plot(1)}'; ...
-                      biasDelta_xMouse{groups2plot(2)}'; ...
-                      biasDelta_xMouse{groups2plot(3)}'];
-    xIdx           = [ones(size(biasDelta_xMouse{groups2plot(1)}))'*1;   ...
-                      ones(size(biasDelta_xMouse{groups2plot(2)}))'*2;  ...
-                      ones(size(biasDelta_xMouse{groups2plot(3)}))'*3];
-else
-    dataDelta      = [biasDelta_xMouse{groups2plot(1)}'; ...
-                      biasDelta_xMouse{groups2plot(2)}'];
-    xIdx           = [ones(size(biasDelta_xMouse{groups2plot(1)}))'*1;   ...
-                      ones(size(biasDelta_xMouse{groups2plot(2)}))'*2];
-end
-
-
-figure
-plot(xLimits(1):xLimits(2),zeros(1,numel(xLimits(1):xLimits(2))),'-','Color',[0.6 0.6 0.6]); hold on
-
-plotSpread(dataDelta,'categoryIdx',xIdx,'distributionIdx',xIdx,...
-    'categoryColors',colorIdx,'categoryMarkers',catMarker); hold on
-
-nTask = find(contains(groupOrder,names2plot{1}));
-h = errorbar(1,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-    '.-','linewidth',4,'color',barColor{1},'markersize',0.1); h.CapSize = 14; hold on
-text(0.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-text(0.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-text(0.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-
-nTask = find(contains(groupOrder,names2plot{2}));
-h = errorbar(2,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-    '.-','linewidth',4,'color',barColor{2},'markersize',0.1); h.CapSize = 14; hold on
-text(1.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-text(1.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-text(1.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-
-if numel(groups2plot) == 3
-    nTask = find(contains(groupOrder,names2plot{3}));
-    h = errorbar(3,nanmean(dataArrayDelta{nTask}),nanstd(dataArrayDelta{nTask})./sqrt(numel(dataArrayDelta{nTask})-1), ...
-        '.-','linewidth',4,'color',barColor{3},'markersize',0.1); h.CapSize = 14; hold on
-    text(2.5,yLimits(1)*.85, [num2str(numel(dataArrayDelta{nTask})) ' mice' ],'FontSize',6)
-    text(2.5,yLimits(1)*.9, [num2str(nTrialsOFF_xGroup(nTask)) ' off' ],'FontSize',6)
-    text(2.5,yLimits(1)*.95, [num2str(nTrialsON_xGroup(nTask)) ' on' ],'FontSize',6)
-else
-end
-
-ylabel('delta bias (%, on-off)','fontsize',12)
 box off
-ylim(yLimits)
-xlim(xLimits)
-set(gca,'TickDir','out')
-set(gca,'xtick',1:numel(names2plot),'xticklabel',xNames)
-rotateXLabels(gca,45)
-title(titlestr)
-            
-if displayStats == 1
-    % unpaired stats for subplot 4 - delta bias across groups
-    groupVec   = categorical(xIdx);
-    [p,t,stats] = anova1(dataDelta,groupVec,'off');
-    text(xLimits(2)-.5,yLimits(1)*0.85,['Group p= ' num2str(p)],'FontSize',6)
-    text(xLimits(2)-.5,yLimits(1)*0.9,['df= ' num2str(stats.df)],'FontSize',6)
-    text(xLimits(2)-.5,yLimits(1)*0.95,['F= ' num2str((t{2,5}))],'FontSize',6)
-    
-    if numel(groups2plot) == 3
-        [g1Vg2_p, ~ , g1Vg2_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(2)},'method','approximate');
-        plot(1:2,[76,76],'k-')
-        text(0.75,78,['p= ' num2str(g1Vg2_p)],'FontSize',6)
-        text(1.25,78,['z= ' num2str(g1Vg2_stats.zval)],'FontSize',6)
-        text(1.75,78,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(2)})-2)],'FontSize',6)  
-         
-         
-        [g1Vg3_p, ~ , g1Vg3_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(3)},'method','approximate');                                 
-        plot(1:3,[80,80,80],'k-')
-        text(1.5,82,['p= ' num2str(g1Vg3_p)],'FontSize',6)
-        text(2,82,['z= ' num2str(g1Vg3_stats.zval)],'FontSize',6)
-        text(2.5,82,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(3)})-2)],'FontSize',6)                        
-         
-        [g2Vg3_p, ~ , g2Vg3_stats] = ranksum(dataArrayDelta{groups2plot(2)}, ...
-                                     dataArrayDelta{groups2plot(3)},'method','approximate');
-        plot(2:3,[72,72],'k-')
-        text(2,74,['p= ' num2str(g2Vg3_p)],'FontSize',6)
-        text(2.5,74,['z= ' num2str(g2Vg3_stats.zval)],'FontSize',6)
-        text(3,74,['df= ' num2str(numel(dataArrayDelta{groups2plot(2)})+ ...
-             numel(dataArrayDelta{groups2plot(3)})-2)],'FontSize',6)  
-         
-    else
-        
-        [g1Vg2_p, ~ , g1Vg2_stats] = ranksum(dataArrayDelta{groups2plot(1)}, ...
-                                     dataArrayDelta{groups2plot(2)},'method','approximate');         
-        plot(1:2,[80,80],'k-')
-        text(0.75,82,['p= ' num2str(g1Vg2_p)],'FontSize',6)
-        text(1.25,82,['z= ' num2str(g1Vg2_stats.zval)],'FontSize',6)
-        text(1.75,82,['df= ' num2str(numel(dataArrayDelta{groups2plot(1)})+ ...
-             numel(dataArrayDelta{groups2plot(2)})-2)],'FontSize',6)                          
-    end                                                           
-else
-end     
+xIdx2 = categorical(xIdx);
+[p,t,stats] = anova1(data,xIdx2,'off');
 
+[s1_s2_p,~,s1_s2_stats] = ranksum(data(xIdx==1),data(xIdx==2),'method','approximate');
+[s1_s3_p,~,s1_s3_stats] = ranksum(data(xIdx==1),data(xIdx==3),'method','approximate');
+[s2_s3_p,~,s2_s3_stats] = ranksum(data(xIdx==2),data(xIdx==3),'method','approximate');
 
-%% clear all vars except source data for plots
-clearvars -except lgDMSD2_aoe lgDMSD1_aoe lgDMSCtrl_aoe ...
-                  lgDMSD2_nd lgDMSD1_nd lgDMSCtrl_nd ...
-                  lgDMSD2_pc lgDMSD1_pc lgDMSCtrl_pc ...
-                  lgNACD2_aoe lgNACD1_aoe ...
-                  groupOrder biasOFF_xMouse biasON_xMouse biasDelta_xMouse ...
-                  nTrialsOFF_xGroup nTrialsON_xGroup
+text(1.5,yLimits(2)*.75,['state p=' num2str(p)],'Color', 'k')
+text(1.5,yLimits(2)*.70,['f=' num2str(cell2mat(t(2,5)))],'Color', 'k')
+text(1.5,yLimits(2)*.65,['df=' num2str(stats.df)],'Color', 'k')
+
+plot(1:0.5:2,ones(1,3)*yLimits(2)*.9,'k-')
+text(1,yLimits(2)*.92,['p=' num2str(round(s1_s2_p,3))],'FontSize',8)
+text(1.5,yLimits(2)*.92,['z=' num2str(round(s1_s2_stats.zval,3))],'FontSize',8)
+plot(2:0.5:3,ones(1,3)*yLimits(2)*.85,'k-')
+text(2,yLimits(2)*.87,['p=' num2str(round(s2_s3_p,3))],'FontSize',8)
+text(2.5,yLimits(2)*.87,['z=' num2str(round(s2_s3_stats.zval,3))],'FontSize',8)
+plot(1:0.5:3,ones(1,5)*yLimits(2)*.95,'k-')
+text(1.2,yLimits(2)*.97,['p=' num2str(round(s1_s3_p,3))],'FontSize',8)
+text(1.8,yLimits(2)*.97,['z=' num2str(round(s1_s3_stats.zval,3))],'FontSize',8)
+
+%% clearvars except source data used for plotting
+clearvars -except lgDMSD2 lgDMSD1 ...
+                  groupOrder reward rewardRate
