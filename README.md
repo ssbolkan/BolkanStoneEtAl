@@ -2,6 +2,7 @@
 <pre>
  ***contact: Scott Bolkan sbolkan AT princeton DOT edu*** 											\
  --code to analyze data/generate plots in Bolkan, Stone et al (2022) 										\
+ --written/tested in matlab 2017b and 2019b													\
  --download data from 10.6084/m9.figshare.17299142 or https://figshare.com/s/84695a0cd8cf37a446b9 						\
  --see https://github.com/irisstone/glmhmm for general use application of GLM-HMMs to similarly 						\
  	structured decision-making behavioral data, as well as additional publication plots.							\
